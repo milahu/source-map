@@ -398,6 +398,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var nameIdx;
 	    var sourceIdx;
 
+	    function reduceArrayToTable(acc, val, idx) {
+	      acc[val] = idx;
+	      return acc;
+	    }
+
+	    const sourceTable = this._sources.toArray()
+	      .reduce(reduceArrayToTable, {});
+
+	    const nameTable = this._names.toArray()
+	      .reduce(reduceArrayToTable, {});
+
 	    var mappings = this._mappings.toArray();
 	    for (var i = 0, len = mappings.length; i < len; i++) {
 	      mapping = mappings[i];
@@ -412,7 +423,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 	      else {
 	        if (i > 0) {
-	          if (!util.compareByGeneratedPositionsInflated(mapping, mappings[i - 1])) {
+	          if (util.areEqualMappings(mapping, mappings[i - 1])) {
 	            continue;
 	          }
 	          next += ',';
@@ -424,7 +435,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      previousGeneratedColumn = mapping.generatedColumn;
 
 	      if (mapping.source != null) {
-	        sourceIdx = this._sources.indexOf(mapping.source);
+	        sourceIdx = sourceTable[mapping.source];
 	        next += base64VLQ.encode(sourceIdx - previousSource);
 	        previousSource = sourceIdx;
 
@@ -438,7 +449,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        previousOriginalColumn = mapping.originalColumn;
 
 	        if (mapping.name != null) {
-	          nameIdx = this._names.indexOf(mapping.name);
+	          nameIdx = nameTable[mapping.name];
 	          next += base64VLQ.encode(nameIdx - previousName);
 	          previousName = nameIdx;
 	        }
@@ -1174,35 +1185,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * Comparator between two mappings with inflated source and name strings where
 	 * the generated positions are compared.
 	 */
-	function compareByGeneratedPositionsInflated(mappingA, mappingB) {
-	  var cmp = mappingA.generatedLine - mappingB.generatedLine;
-	  if (cmp !== 0) {
-	    return cmp;
-	  }
+	function compareMappings(a, b) {
+	  var cmp = a.generatedLine - b.generatedLine;
+	  if (cmp != 0) return cmp;
 
-	  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
-	  if (cmp !== 0) {
-	    return cmp;
-	  }
+	  cmp = a.generatedColumn - b.generatedColumn;
+	  if (cmp != 0) return cmp;
 
-	  cmp = strcmp(mappingA.source, mappingB.source);
-	  if (cmp !== 0) {
-	    return cmp;
-	  }
+	  cmp = strcmp(a.source, b.source);
+	  if (cmp != 0) return cmp;
 
-	  cmp = mappingA.originalLine - mappingB.originalLine;
-	  if (cmp !== 0) {
-	    return cmp;
-	  }
+	  cmp = a.originalLine - b.originalLine;
+	  if (cmp != 0) return cmp;
 
-	  cmp = mappingA.originalColumn - mappingB.originalColumn;
-	  if (cmp !== 0) {
-	    return cmp;
-	  }
+	  cmp = a.originalColumn - b.originalColumn;
+	  if (cmp != 0) return cmp;
 
-	  return strcmp(mappingA.name, mappingB.name);
+	  return strcmp(a.name, b.name);
 	}
-	exports.compareByGeneratedPositionsInflated = compareByGeneratedPositionsInflated;
+	exports.compareMappings = compareMappings;
+
+	/**
+	 * Test two mappings for equality.
+	 */
+	function areEqualMappings(a, b) {
+	    return (
+	      // sorted by selectivity
+	      a.generatedColumn == b.generatedColumn &&
+	      a.originalColumn == b.originalColumn &&
+	      a.name == b.name &&
+	      a.generatedLine == b.generatedLine &&
+	      a.originalLine == b.originalLine &&
+	      a.source == b.source
+	    );
+	}
+	exports.areEqualMappings = areEqualMappings;
 
 	/**
 	 * Strip any JSON XSSI avoidance prefix from the string (as documented
@@ -1419,7 +1436,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var columnA = mappingA.generatedColumn;
 	  var columnB = mappingB.generatedColumn;
 	  return lineB > lineA || lineB == lineA && columnB >= columnA ||
-	         util.compareByGeneratedPositionsInflated(mappingA, mappingB) <= 0;
+	         util.compareMappings(mappingA, mappingB) <= 0;
 	}
 
 	/**
@@ -1471,7 +1488,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 */
 	MappingList.prototype.toArray = function MappingList_toArray() {
 	  if (!this._sorted) {
-	    this._array.sort(util.compareByGeneratedPositionsInflated);
+	    this._array.sort(util.compareMappings);
 	    this._sorted = true;
 	  }
 	  return this._array;
@@ -1612,8 +1629,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *        `SourceMapConsumer.GENERATED_ORDER`.
 	 * @param options
 	 *        sourceToURL
-	 *          convert mapping-source from ID/null to path-string
-	 *          default true
+	 *          convert mapping-source from name/null to path-string. default true.
+	 *          set to false to make SourceMapConsumer
+	 *          compatible with SourceMapGenerator.fromSourceMap.
 	 */
 	SourceMapConsumer.prototype.eachMapping =
 	  function SourceMapConsumer_eachMapping(aCallback, aContext, aOrder, aOptions) {
