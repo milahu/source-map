@@ -294,6 +294,25 @@ exports['test eachMapping for indexed source maps'] = function(assert) {
   });
 };
 
+exports['test eachMapping with option sourceToURL'] = function (assert) {
+  var map;
+  // generated mappings: source == originalLine == originalColumn == null
+  map = new SourceMapConsumer(util.testMapGeneratedMappings);
+  map.eachMapping(function (mapping) {
+    assert.ok(typeof mapping.source === 'string');
+  });
+  map.eachMapping(function (mapping) {
+    assert.ok(typeof mapping.source === 'string');
+  }, null, SourceMapConsumer.GENERATED_ORDER, { sourceToURL: true });
+  map.eachMapping(function (mapping) {
+    assert.ok(mapping.source === null || mapping.source === 'one.js' || mapping.source === 'two.js');
+    if (mapping.source === null) {
+      assert.ok(mapping.originalLine === null);
+      assert.ok(mapping.originalColumn === null);
+      assert.ok(mapping.name === null);
+    }
+  }, null, SourceMapConsumer.GENERATED_ORDER, { sourceToURL: false });
+};
 
 exports['test iterating over mappings in a different order'] = function (assert) {
   var map = new SourceMapConsumer(util.testMap);

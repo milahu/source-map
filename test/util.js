@@ -59,6 +59,13 @@ exports.testMapSingleSource = {
   sourceRoot: '',
   mappings: 'CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOC,IAAID'
 };
+exports.testMapGeneratedMappings = {
+  version: 3,
+  file: 'min.js',
+  names: [],
+  sources: ['one.js'],
+  mappings: 'AAAA,B,C,D;A,B'
+};
 exports.testMapEmptyMappings = {
   version: 3,
   file: 'min.js',
