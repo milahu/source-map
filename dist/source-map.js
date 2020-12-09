@@ -79,6 +79,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var util = __webpack_require__(4);
 	var ArraySet = __webpack_require__(5).ArraySet;
 	var MappingList = __webpack_require__(6).MappingList;
+	var GENERATED_ORDER = __webpack_require__(7).GENERATED_ORDER;
 
 	/**
 	 * An instance of the SourceMapGenerator represents a source map which is
@@ -107,9 +108,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * Creates a new SourceMapGenerator based on a SourceMapConsumer
 	 *
 	 * @param aSourceMapConsumer The SourceMap.
+	 *
+	 * @param aOptions pass options to SourceMapConsumer.eachMapping
 	 */
 	SourceMapGenerator.fromSourceMap =
-	  function SourceMapGenerator_fromSourceMap(aSourceMapConsumer) {
+	  function SourceMapGenerator_fromSourceMap(aSourceMapConsumer, aOptions) {
+	    const options = Object.assign({
+	      sourceToURL: true,
+	    }, aOptions || {});
 	    var sourceRoot = aSourceMapConsumer.sourceRoot;
 	    var generator = new SourceMapGenerator({
 	      file: aSourceMapConsumer.file,
@@ -140,7 +146,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 
 	      generator.addMapping(newMapping);
-	    });
+	    }, null, GENERATED_ORDER, options);
 	    aSourceMapConsumer.sources.forEach(function (sourceFile) {
 	      var sourceRelative = sourceFile;
 	      if (sourceRoot !== null) {
@@ -1604,9 +1610,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *        iterate over the mappings sorted by the generated file's line/column
 	 *        order or the original's source/line/column order, respectively. Defaults to
 	 *        `SourceMapConsumer.GENERATED_ORDER`.
+	 * @param options
+	 *        sourceToURL
+	 *          convert mapping-source from ID/null to path-string
+	 *          default true
 	 */
 	SourceMapConsumer.prototype.eachMapping =
-	  function SourceMapConsumer_eachMapping(aCallback, aContext, aOrder) {
+	  function SourceMapConsumer_eachMapping(aCallback, aContext, aOrder, aOptions) {
+	    const options = Object.assign({
+	      // default options
+	      sourceToURL: true,
+	    }, aOptions || {});
 	    var context = aContext || null;
 	    var order = aOrder || SourceMapConsumer.GENERATED_ORDER;
 
@@ -1625,7 +1639,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var sourceRoot = this.sourceRoot;
 	    mappings.map(function (mapping) {
 	      var source = mapping.source === null ? null : this._sources.at(mapping.source);
-	      source = util.computeSourceURL(sourceRoot, source, this._sourceMapURL);
+	      if (options.sourceToURL) {
+	        source = util.computeSourceURL(sourceRoot, source, this._sourceMapURL);
+	      }
 	      return {
 	        source: source,
 	        generatedLine: mapping.generatedLine,
